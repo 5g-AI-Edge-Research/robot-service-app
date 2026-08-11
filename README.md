@@ -892,5 +892,5 @@ __pycache__/
 GitHub Organization:
 
 ```text
-5g-ai-edge
+5g-ai-edge-research
 ```
