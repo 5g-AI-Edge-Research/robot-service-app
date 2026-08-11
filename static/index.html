@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>5G UE Robot Controller</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">5G UE DEVICE + SLICE DEMO</div>
+        <h1>5G Robot Controller</h1>
+        <p>
+          Start a UE on any registered laptop and its active <code>uesimtun*</code> interfaces appear automatically.
+          Choose the device and slice, then validate robot commands through that UE tunnel.
+        </p>
+      </div>
+      <div class="hero-card">
+        <strong id="heroOnline">0</strong>
+        <span>online device(s)</span>
+        <small id="heroTunnels">0 active UE tunnels</small>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel device-panel">
+        <div class="panel-head device-head">
+          <div>
+            <div class="section-kicker">UE DISCOVERY</div>
+            <h2>Connected devices</h2>
+            <p>
+              The local UE agent reports laptop identity and active tunnels. Slice/DNN labels are derived from the UE IP subnet, not from the uesimtun number.
+            </p>
+          </div>
+          <div class="device-summary">
+            <span class="summary-pill"><strong id="knownDeviceCount">0</strong> known</span>
+            <span class="summary-pill online"><strong id="onlineDeviceCount">0</strong> online</span>
+            <span class="summary-pill fiveg"><strong id="fiveGDeviceCount">0</strong> on 5G</span>
+          </div>
+        </div>
+        <div class="browser-hint" id="browserHint">Detecting this browser...</div>
+        <div id="deviceGrid" class="device-grid empty">No UE agent has registered yet.</div>
+      </section>
+
+      <aside class="panel side-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Network path</h2>
+            <p>Select an online device and one of the UE tunnels reported by its local agent.</p>
+          </div>
+          <button class="ghost" id="refreshBtn">Refresh</button>
+        </div>
+
+        <div class="status" id="tunnelStatus">Waiting for UE agent registration...</div>
+
+        <label>UE device</label>
+        <select id="deviceSelect"></select>
+
+        <label>Source UE tunnel</label>
+        <select id="sourceSelect"></select>
+
+        <div class="slice-card" id="sliceCard">
+          <div><span>Device</span><strong id="selectedDeviceLabel">-</strong></div>
+          <div><span>Selected slice</span><strong id="sliceName">-</strong></div>
+          <div><span>DNN</span><strong id="dnnName">-</strong></div>
+          <div><span>Interface</span><strong id="ifaceName">-</strong></div>
+          <div><span>Source IP</span><strong id="sourceIpLabel">-</strong></div>
+        </div>
+
+        <label>Target / ACK endpoint</label>
+        <input id="targetInput" value="172.16.46.1" />
+        <div class="btn-row three">
+          <button onclick="selectPath('core')">Core</button>
+          <button onclick="selectPath('mec')">Local Breakout (MEC)</button>
+          <button onclick="selectPath('cloud')">Cloud VM</button>
+          <button onclick="presetTarget('172.16.46.1')">URLLC GW</button>
+        </div>
+
+        <div class="two">
+          <div>
+            <label>Payload size</label>
+            <input id="payloadInput" type="number" value="32" min="0" max="1400" />
+          </div>
+          <div>
+            <label>Deadline</label>
+            <input id="deadlineInput" type="number" value="30" min="1" max="1000" />
+          </div>
+        </div>
+
+        <div class="hint">
+          Device discovery uses the management LAN only. The validated robot request itself is executed by that laptop's UE agent and bound to the selected 5G source IP.
+        </div>
+      </aside>
+
+      <section class="panel arena-panel">
+        <div class="game-topbar">
+          <div>
+            <h2>Robot mission arena</h2>
+            <p>Reach the finish flag while avoiding obstacle blocks. Use keyboard arrows/WASD or the control pad.</p>
+          </div>
+          <div class="mission-pills">
+            <span id="gameState" class="pill idle">idle</span>
+            <span id="deadlinePill" class="pill">deadline 30 ms</span>
+          </div>
+        </div>
+
+        <div class="mission-dashboard">
+          <div class="metric big"><span>Score</span><strong id="score">0</strong></div>
+          <div class="metric"><span>Last RTT</span><strong id="lastRtt">-</strong></div>
+          <div class="metric"><span>Average RTT</span><strong id="avgRtt">-</strong></div>
+          <div class="metric"><span>Jitter</span><strong id="jitter">-</strong></div>
+          <div class="metric"><span>Loss</span><strong id="loss">0%</strong></div>
+          <div class="metric"><span>Deadline miss</span><strong id="miss">0</strong></div>
+        </div>
+
+        <div class="arena-wrap">
+          <div class="course-labels">
+            <span class="legend start">Start</span>
+            <span class="legend wall">Obstacle</span>
+            <span class="legend danger">Deadline zone</span>
+            <span class="legend finish">Finish</span>
+          </div>
+          <div id="arena" class="arena" aria-label="Robot obstacle course"></div>
+          <div id="pathLine" class="path-line">Command path: Web UI → controller on RAN/MEC → selected laptop UE agent → selected uesimtun → gNB/RAN → UPF/MEC → ACK → controller → UI move decision</div>
+        </div>
+
+        <div class="control-strip">
+          <div class="dpad">
+            <button data-cmd="UP" class="up">▲</button>
+            <button data-cmd="LEFT" class="left">◄</button>
+            <button data-cmd="STOP" class="stop">STOP</button>
+            <button data-cmd="RIGHT" class="right">►</button>
+            <button data-cmd="DOWN" class="down">▼</button>
+          </div>
+          <div class="mission-actions">
+            <button id="autoBtn" class="primary">Run auto mission</button>
+            <button id="burstBtn" class="ghost">Latency burst x50</button>
+            <button id="resetGameBtn" class="ghost">Reset mission</button>
+            <button id="clearLogBtn" class="ghost">Clear log</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel log-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Command timeline</h2>
+            <p>Each row is one network-validated robot command.</p>
+          </div>
+        </div>
+        <div id="events" class="events empty">No command yet.</div>
+      </section>
+
+      <section class="panel explain-panel">
+        <h2>What this demo proves</h2>
+        <div class="explain-grid">
+          <div>
+            <strong>Automatic UE discovery</strong>
+            <p>Each laptop agent reports its live uesimtun interfaces. The web can manage multiple UE hosts without hard-coding one NUC.</p>
+          </div>
+          <div>
+            <strong>Slice-aware execution</strong>
+            <p>172.16.45/46/47/49 addresses are mapped to eMBB, URLLC, mMTC, and MEC independently of interface numbering.</p>
+          </div>
+          <div>
+            <strong>Real 5G data path</strong>
+            <p>The controller orchestrates over the LAN, while the actual robot request is bound to the selected UE tunnel and traverses the 5G user plane.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

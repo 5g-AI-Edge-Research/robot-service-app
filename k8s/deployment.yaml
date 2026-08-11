@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: urllc-robot-controller
+  namespace: open5gs
+  labels:
+    app: urllc-robot-controller
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: urllc-robot-controller
+  template:
+    metadata:
+      labels:
+        app: urllc-robot-controller
+    spec:
+      nodeSelector:
+        workload: ran-mec
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: controller
+          image: docker.io/library/urllc-robot-controller:v4
+          imagePullPolicy: Never
+          env:
+            - name: UE_AGENT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: urllc-robot-controller-secret
+                  key: agent-token
+            - name: AGENT_STALE_SECONDS
+              value: "35"
+            - name: COMMAND_WAIT_SECONDS
+              value: "8"
+            - name: LONG_POLL_SECONDS
+              value: "25"
+            - name: PROXY_WAIT_SECONDS
+              value: "25"
+            - name: MAX_PROXY_IMAGE_BYTES
+              value: "3000000"
+            - name: CORE_ACK_TARGET
+              value: "172.16.46.1"
+            - name: MEC_ROBOT_URL
+              value: "http://172.16.49.1:5001/urllc/move"
+            - name: CLOUD_ROBOT_URL
+              value: "http://10.34.211.177:5000/urllc/move"
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
