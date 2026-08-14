@@ -64,29 +64,6 @@ function tunnelsForSelectedDevice(){
   return state.tunnels.filter(tunnel => tunnel.device_id === state.selectedDeviceId);
 }
 
-
-function mecTargetForTunnel(tunnel) {
-  if (!tunnel || !tunnel.ip) {
-    return null;
-  }
-
-  if (tunnel.ip.startsWith("172.16.48.")) {
-    return {
-      target: "http://172.16.48.1:5001/urllc/move",
-      preferred_slice: "mec-nuc"
-    };
-  }
-
-  if (tunnel.ip.startsWith("172.16.49.")) {
-    return {
-      target: "http://172.16.49.1:5001/urllc/move",
-      preferred_slice: "mec-icn"
-    };
-  }
-
-  return null;
-}
-
 function selectFirstTunnelBySlice(sliceName){
   const tunnel = tunnelsForSelectedDevice().find(t => t.slice === sliceName);
   if(tunnel){
@@ -98,22 +75,6 @@ function selectFirstTunnelBySlice(sliceName){
 }
 
 function selectPath(path){
-  if (path === "mec") {
-    const tunnels = tunnelsForSelectedDevice();
-
-    const mecTunnel = tunnels.find(
-      t =>
-        t.ip?.startsWith("172.16.48.") ||
-        t.ip?.startsWith("172.16.49.")
-    );
-
-    const dynamicMec = mecTargetForTunnel(mecTunnel);
-
-    if (dynamicMec) {
-      state.pathTargets.mec = dynamicMec;
-    }
-  }
-
   state.selectedPath = path;
   const info = state.pathTargets[path] || {};
   if(info.target) presetTarget(info.target);
@@ -281,7 +242,7 @@ function updateSliceCard(){
   $("ifaceName").textContent = t.iface;
   $("sourceIpLabel").textContent = t.ip;
   const card = $("sliceCard");
-  const cls = t.slice === "urllc" ? "urllc" : ((t.slice === "mec-icn" || t.slice === "mec-nuc") ? "mec" : (t.slice === "mmtc" ? "mmtc" : "embb"));
+  const cls = t.slice === "urllc" ? "urllc" : (t.slice === "mec-icn" ? "mec" : (t.slice === "mmtc" ? "mmtc" : "embb"));
   card.className = `slice-card ${cls}`;
 }
 
@@ -304,7 +265,7 @@ function renderBrowserHint(){
 
 function tunnelBadgeClass(slice){
   if(slice === "urllc") return "urllc";
-  if(slice === "mec-icn" || slice === "mec-nuc") return "mec";
+  if(slice === "mec-icn") return "mec";
   if(slice === "mmtc") return "mmtc";
   return "embb";
 }

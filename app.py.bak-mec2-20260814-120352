@@ -71,14 +71,6 @@ SLICE_NETWORKS = (
         },
     ),
     (
-        ipaddress.ip_network("172.16.48.0/24"),
-        {
-            "slice": "mec-nuc",
-            "label": "MEC NUC",
-            "dnn": "mec.nuc.testbed",
-        },
-    ),
-    (
         ipaddress.ip_network("172.16.49.0/24"),
         {
             "slice": "mec-icn",
